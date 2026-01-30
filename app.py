@@ -25,33 +25,41 @@ def compose_images():
         avatar_response = requests.get(avatar_url)
         product_response = requests.get(product_url)
         
-        avatar_img = Image.open(BytesIO(avatar_response.content))
-        product_img = Image.open(BytesIO(product_response.content))
+        avatar_img = Image.open(BytesIO(avatar_response.content)).convert('RGBA')
+        product_img = Image.open(BytesIO(product_response.content)).convert('RGBA')
         
-        # Redimensionner les images à 512x512
-        avatar_img = avatar_img.resize((512, 512))
-        product_img = product_img.resize((512, 512))
+        # Créer l'image finale (format 9:16 pour TikTok)
+        width, height = 720, 1280
+        composed = Image.new('RGBA', (width, height), (255, 255, 255, 255))
         
-        # Créer une nouvelle image 720x512 (70% avatar + 30% produit)
-        composed = Image.new('RGB', (720, 512))
+        # Avatar en pleine image
+        avatar_resized = avatar_img.resize((width, height))
+        composed.paste(avatar_resized, (0, 0), avatar_resized if avatar_resized.mode == 'RGBA' else None)
         
-        # Avatar : 70% de la largeur (504 pixels)
-        avatar_resized = avatar_img.resize((504, 512))
-        composed.paste(avatar_resized, (0, 0))
+        # Produit superposé au centre (35% de la largeur)
+        product_width = int(width * 0.35)
+        product_height = int(product_width * product_img.height / product_img.width)
+        product_resized = product_img.resize((product_width, product_height))
         
-        # Produit : 30% de la largeur (216 pixels)
-        product_resized = product_img.resize((216, 512))
-        composed.paste(product_resized, (504, 0))
+        # Position : centre horizontal, 60% de la hauteur (zone des mains)
+        x = (width - product_width) // 2
+        y = int(height * 0.6) - (product_height // 2)
+        
+        # Coller le produit avec transparence
+        composed.paste(product_resized, (x, y), product_resized if product_resized.mode == 'RGBA' else None)
+        
+        # Convertir en RGB pour JPEG
+        final = Image.new('RGB', (width, height), (255, 255, 255))
+        final.paste(composed, (0, 0), composed if composed.mode == 'RGBA' else None)
         
         # Générer un nom de fichier unique
         filename = f"{uuid.uuid4()}.jpg"
         filepath = os.path.join(COMPOSED_DIR, filename)
         
         # Sauvegarder l'image
-        composed.save(filepath, 'JPEG', quality=95)
+        final.save(filepath, 'JPEG', quality=95)
         
         # Construire l'URL publique
-        # Railway injecte la variable PORT, on utilise l'URL du service
         base_url = request.host_url.rstrip('/')
         image_url = f"{base_url}/static/composed/{filename}"
         
