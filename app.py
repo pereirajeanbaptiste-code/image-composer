@@ -41,9 +41,9 @@ def compose_images():
         product_height = int(product_width * product_img.height / product_img.width)
         product_resized = product_img.resize((product_width, product_height))
         
-        # Position : centre horizontal, 60% de la hauteur (zone des mains)
+        # Position : centre horizontal, 65% de la hauteur (zone des mains)
         x = (width - product_width) // 2
-        y = int(height * 0.6) - (product_height // 2)
+        y = int(height * 0.65) - (product_height // 2)
         
         # Coller le produit avec transparence
         composed.paste(product_resized, (x, y), product_resized if product_resized.mode == 'RGBA' else None)
